@@ -1,35 +1,30 @@
 package com.example.Recommendation_system.service;
 
-import com.example.Recommendation_system.model.Recommendation;
 import com.example.Recommendation_system.model.RecommendationDTO;
-import com.example.Recommendation_system.repository.RecommendationsRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class RecommendationService {
 
-    private final RecommendationsRepository recommendationRepository;
+    private final JdbcTemplate jdbcTemplate;
     private final List<RecommendationRuleSet> rules;
 
-    @Autowired
-    public RecommendationService(RecommendationsRepository recommendationRepository,
-                                 List<RecommendationRuleSet> rules) {
-        this.recommendationRepository = recommendationRepository;
+    public RecommendationService(JdbcTemplate jdbcTemplate, List<RecommendationRuleSet> rules) {
+        this.jdbcTemplate = jdbcTemplate;
         this.rules = rules;
     }
 
-    public RecommendationDTO getRecommendations(String userId) {
-        List<Recommendation> recommendations = new ArrayList<>();
+    public List<RecommendationDTO> getRecommendations(String userId) {
+        List<RecommendationDTO> result = new ArrayList<>();
         for (RecommendationRuleSet rule : rules) {
-            List<Recommendation> ruleRecommendations = rule.getRecommendations(userId);
-            if (ruleRecommendations != null) {
-                recommendations.addAll(ruleRecommendations);
-            }
+            Optional<RecommendationDTO> recommendation = rule.getRecommendation(userId, jdbcTemplate);
+            recommendation.ifPresent(result::add);
         }
-        return new RecommendationDTO(userId, recommendations);
+        return result;
     }
 }

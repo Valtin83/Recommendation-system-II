@@ -1,5 +1,6 @@
 package com.example.Recommendation_system.controller;
 
+import com.example.Recommendation_system.model.Recommendation;
 import com.example.Recommendation_system.model.RecommendationDTO;
 import com.example.Recommendation_system.service.RecommendationService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,8 +10,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("/recommendation")
+@RequestMapping("/recommendations")
 public class RecommendationController {
 
     private final RecommendationService recommendationService;
@@ -20,9 +23,11 @@ public class RecommendationController {
         this.recommendationService = recommendationService;
     }
 
-    @GetMapping("/{user_id}")
-    public ResponseEntity<RecommendationDTO> getRecommendations(@PathVariable("user_id") String userId) {
-        RecommendationDTO recommendations = recommendationService.getRecommendations(userId);
-        return ResponseEntity.ok(recommendations);
+    @GetMapping("/{userId}")
+    public ResponseEntity<Recommendation> getRecommendations(@PathVariable String userId) {
+        List<RecommendationDTO> recommendations = recommendationService.getRecommendations(userId);
+        return ResponseEntity.ok(new Recommendation(userId, recommendations));
     }
+
 }
+

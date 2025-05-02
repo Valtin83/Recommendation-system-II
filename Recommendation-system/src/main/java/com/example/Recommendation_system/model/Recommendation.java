@@ -1,62 +1,55 @@
 package com.example.Recommendation_system.model;
 
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.annotation.Id;
 
 import java.util.List;
 import java.util.Objects;
 
-@EntityScan
-public class Recommendation {
+
+public class Recommendation  {
 
     @Id
-    private String id;
-    private String title;
-    private String description;
-    private List<String> ruleSets;
+    private String userId;
+    private List<RecommendationDTO> recommendations;
 
-    public Recommendation(String id, String title, String description, List<String> ruleSets) {
-        this.id = id;
-        this.title = title;
-        this.description = description;
-        this.ruleSets = ruleSets;
+    public Recommendation(String userId, List<RecommendationDTO> recommendations) {
+        this.userId = userId;
+        this.recommendations = recommendations;
     }
 
-    public String getId() {
-        return id;
+    public String getUserId() {
+        return userId;
     }
 
-    public String getTitle() {
-        return title;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
-    public String getDescription() {
-        return description;
+    public List<RecommendationDTO> getRecommendations() {
+        return recommendations;
     }
 
-    public List<String> getRuleSets() {
-        return ruleSets;
+    public void setRecommendations(List<RecommendationDTO> recommendations) {
+        this.recommendations = recommendations;
     }
 
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Recommendation that = (Recommendation) o;
-        return Objects.equals(id, that.id) && Objects.equals(title, that.title) && Objects.equals(description, that.description) && Objects.equals(ruleSets, that.ruleSets);
+        return Objects.equals(userId, that.userId) && Objects.equals(recommendations, that.recommendations);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, title, description, ruleSets);
+        return Objects.hash(userId, recommendations);
     }
 
     @Override
     public String toString() {
         return "Recommendation{" +
-                "id='" + id + '\'' +
-                ", title='" + title + '\'' +
-                ", description='" + description + '\'' +
-                ", ruleSets=" + ruleSets +
+                "userId='" + userId + '\'' +
+                ", recommendations=" + recommendations +
                 '}';
     }
 }

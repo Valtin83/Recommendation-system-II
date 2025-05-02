@@ -1,10 +1,12 @@
 package com.example.Recommendation_system.service;
 
-import com.example.Recommendation_system.model.Recommendation;
+import com.example.Recommendation_system.model.RecommendationDTO;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.util.List;
+import java.util.Optional;
 
 public interface RecommendationRuleSet {
 
-    List<Recommendation> getRecommendations(String userId);
+    Optional<RecommendationDTO> getRecommendation(String userId, JdbcTemplate jdbcTemplate);
+
 }
