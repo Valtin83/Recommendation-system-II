@@ -21,7 +21,6 @@ public class SimpleCreditRuleSet implements RecommendationRuleSet {
 
     @Override
     public Optional<RecommendationDTO> getRecommendation(String userId, JdbcTemplate jdbcTemplate) {
-
         // Проверка отсутствия продуктов с типом CREDIT
         String sqlCheckCredit = "SELECT 1 FROM transactions t "
                 + "JOIN products p ON t.product_id = p.id "
@@ -30,33 +29,29 @@ public class SimpleCreditRuleSet implements RecommendationRuleSet {
         List<Map<String, Object>> creditResults = this.jdbcTemplate.queryForList(sqlCheckCredit, userId);
         if (!creditResults.isEmpty()) {
             // Есть продукты CREDIT — рекомендация не подходит
-            return Optional.empty();
+            return Optional.empty(); // Нет необходимости в кредитах для пользователя
         }
 
-        // Проверка суммы пополнений по DEBIT > трат
         // Сумма депозита
-        String sqlSumDeposit = "SELECT SUM(t.amount) FROM transactions t "
-                + "JOIN products p ON t.product_id = p.id "
-                + "WHERE t.user_id = ? AND p.type = 'DEBIT' AND t.type = 'DEPOSIT'";
+        Double sumDeposit = this.jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(t.amount), 0) FROM transactions t "
+                        + "JOIN products p ON t.product_id = p.id "
+                        + "WHERE t.user_id = ? AND p.type = 'DEBIT' AND t.type = 'DEPOSIT'",
+                Double.class, userId);
 
-         // Сумма трат
-        String sqlSumSpend = "SELECT SUM(t.amount) FROM transactions t "
-                + "JOIN products p ON t.product_id = p.id "
-                + "WHERE t.user_id = ? AND p.type = 'DEBIT' AND t.type = 'SPEND'";
+        // Сумма трат
+        Double sumSpend = this.jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(t.amount), 0) FROM transactions t "
+                        + "JOIN products p ON t.product_id = p.id "
+                        + "WHERE t.user_id = ? AND p.type = 'DEBIT' AND t.type = 'SPEND'",
+                Double.class, userId);
 
-        Double sumDeposit = this.jdbcTemplate.queryForObject(sqlSumDeposit, Double.class, userId);
-        Double sumSpend = this.jdbcTemplate.queryForObject(sqlSumSpend, Double.class, userId);
-
-        sumDeposit = (sumDeposit != null) ? sumDeposit : 0.0;
-        sumSpend = (sumSpend != null) ? sumSpend : 0.0;
-
-        // Проверка суммы расходов > 100000 ₽
-        String sqlSumExpenses = "SELECT SUM(t.amount) FROM transactions t "
-                + "JOIN products p ON t.product_id = p.id "
-                + "WHERE t.user_id = ? AND p.type = 'DEBIT' AND t.type = 'SPEND'";
-
-        Double totalExpenses = this.jdbcTemplate.queryForObject(sqlSumExpenses, Double.class, userId);
-        totalExpenses = (totalExpenses != null) ? totalExpenses : 0.0;
+        // Сумма расходов
+        Double totalExpenses = this.jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(t.amount), 0) FROM transactions t "
+                        + "JOIN products p ON t.product_id = p.id "
+                        + "WHERE t.user_id = ? AND p.type = 'DEBIT' AND t.type = 'SPEND'",
+                Double.class, userId);
 
         // Проверка условий
         if (sumDeposit > sumSpend && totalExpenses > 100_000) {

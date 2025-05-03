@@ -21,36 +21,20 @@ public class Invest500RuleSet implements RecommendationRuleSet {
 
     @Override
     public Optional<RecommendationDTO> getRecommendation(String userId, JdbcTemplate jdbcTemplate) {
-        // Проверка, есть ли у пользователя транзакции с продуктом типа DEBIT
-        String sqlDebit = "SELECT 1 FROM transactions t "
-                + "JOIN products p ON t.product_id = p.id "
-                + "WHERE t.user_id = ? AND p.type = 'DEBIT' LIMIT 1";
-
-        List<Map<String, Object>> debitResults = this.jdbcTemplate.queryForList(sqlDebit, userId);
-        if (debitResults.isEmpty()) {
-            // Нет транзакций с DEBIT, правило не выполняется
-            return Optional.empty();
+        // Проверяем наличие транзакций DEBIT
+        boolean hasDebitTransactions = hasTransactionsOfType(userId);
+        if (!hasDebitTransactions) {
+            return Optional.empty(); // Нет транзакций DEBIT
         }
 
-        // Проверка, есть ли у пользователя продукты типа INVEST (если есть, правило не выполняется)
-        String sqlInvest = "SELECT 1 FROM transactions t "
-                + "JOIN products p ON t.product_id = p.id "
-                + "WHERE t.user_id = ? AND p.type = 'INVEST' LIMIT 1";
-
-        List<Map<String, Object>> investResults = this.jdbcTemplate.queryForList(sqlInvest, userId);
-        if (!investResults.isEmpty()) {
-            // Есть продукты INVEST, правило не выполняется
-            return Optional.empty();
+        // Проверяем наличие продуктов типа INVEST
+        boolean hasInvestProducts = hasProductsOfType(userId, "INVEST");
+        if (hasInvestProducts) {
+            return Optional.empty(); // Подписан на продукты INVEST
         }
 
-        // Сумма пополнений по продуктам типа SAVING
-        String sqlSavings = "SELECT SUM(t.amount) FROM transactions t "
-                + "JOIN products p ON t.product_id = p.id "
-                + "WHERE t.user_id = ? AND p.type = 'SAVING' AND t.type = 'DEPOSIT'";
-
-        Double totalSavings = this.jdbcTemplate.queryForObject(sqlSavings, Double.class, userId);
-        totalSavings = (totalSavings != null) ? totalSavings : 0.0;
-
+        // Рассчитываем суммарное пополнение по продуктам типа SAVING
+        double totalSavings = getTotalSavings(userId);
         if (totalSavings > 1000) {
             return Optional.of(new RecommendationDTO(
                     RECOMMENDATION_ID,
@@ -59,7 +43,32 @@ public class Invest500RuleSet implements RecommendationRuleSet {
             ));
         }
 
-        return Optional.empty();
+        return Optional.empty(); // Условия не выполнены
     }
 
+    // Метод для проверки наличия транзакций определенного типа
+    private boolean hasTransactionsOfType(String userId) {
+        String sql = "SELECT 1 FROM transactions t "
+                + "JOIN products p ON t.product_id = p.id "
+                + "WHERE t.user_id = ? AND p.type = ? LIMIT 1";
+        List<Map<String, Object>> results = this.jdbcTemplate.queryForList(sql, userId, "DEBIT");
+        return !results.isEmpty();
+    }
+
+    // Метод для проверки наличия продуктов определенного типа
+    private boolean hasProductsOfType(String userId, String type) {
+        String sql = "SELECT 1 FROM products p "
+                + "JOIN transactions t ON t.product_id = p.id "
+                + "WHERE t.user_id = ? AND p.type = ? LIMIT 1";
+        List<Map<String, Object>> results = this.jdbcTemplate.queryForList(sql, userId, type);
+        return !results.isEmpty();
+    }
+
+    // Метод для получения суммы пополнений по продуктам типа SAVING
+    private double getTotalSavings(String userId) {
+        String sql = "SELECT COALESCE(SUM(t.amount), 0) FROM transactions t "
+                + "JOIN products p ON t.product_id = p.id "
+                + "WHERE t.user_id = ? AND p.type = 'SAVING' AND t.type = 'DEPOSIT'";
+        return this.jdbcTemplate.queryForObject(sql, Double.class, userId);
+    }
 }

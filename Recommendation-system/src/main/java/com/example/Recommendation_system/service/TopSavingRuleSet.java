@@ -11,12 +11,9 @@ import java.util.Optional;
 @Component
 public class TopSavingRuleSet implements RecommendationRuleSet {
 
-    private final JdbcTemplate jdbcTemplate;
-
     private static final String RECOMMENDATION_ID = "59efc529-2fff-41af-baff-90ccd7402925";
 
     public TopSavingRuleSet(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -26,7 +23,7 @@ public class TopSavingRuleSet implements RecommendationRuleSet {
                 + "JOIN products p ON t.product_id = p.id "
                 + "WHERE t.user_id = ? AND p.type = 'DEBIT' LIMIT 1";
 
-        List<Map<String, Object>> debitResults = this.jdbcTemplate.queryForList(sqlDebitExist, userId);
+        List<Map<String, Object>> debitResults = jdbcTemplate.queryForList(sqlDebitExist, userId);
         if (debitResults.isEmpty()) {
             // Пользователь не использует продукты типа DEBIT — правило не работает
             return Optional.empty();
@@ -37,7 +34,7 @@ public class TopSavingRuleSet implements RecommendationRuleSet {
                 + "JOIN products p ON t.product_id = p.id "
                 + "WHERE t.user_id = ? AND p.type = 'INVEST' LIMIT 1";
 
-        List<Map<String, Object>> investResults = this.jdbcTemplate.queryForList(sqlInvestExist, userId);
+        List<Map<String, Object>> investResults = jdbcTemplate.queryForList(sqlInvestExist, userId);
         if (!investResults.isEmpty()) {
             // Есть инвест-продукты — правило не подходит
             return Optional.empty();
@@ -48,7 +45,7 @@ public class TopSavingRuleSet implements RecommendationRuleSet {
                 + "JOIN products p ON t.product_id = p.id "
                 + "WHERE t.user_id = ? AND p.type = 'SAVING' AND t.type = 'DEPOSIT'";
 
-        Double totalSavings = this.jdbcTemplate.queryForObject(sqlSavingsSum, Double.class, userId);
+        Double totalSavings = jdbcTemplate.<Double>queryForObject(sqlSavingsSum, new Object[]{userId}, Double.class);
 
         if (totalSavings >= 50_000) {
             return Optional.of(new RecommendationDTO(
