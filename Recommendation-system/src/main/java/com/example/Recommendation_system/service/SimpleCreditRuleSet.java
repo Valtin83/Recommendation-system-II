@@ -1,0 +1,72 @@
+package com.example.Recommendation_system.service;
+
+import com.example.Recommendation_system.model.RecommendationDTO;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+@Component
+public class SimpleCreditRuleSet implements RecommendationRuleSet {
+
+    private static final String RECOMMENDATION_ID = "ab138afb-f3ba-4a93-b74f-0fcee86d447f";
+
+    private final JdbcTemplate jdbcTemplate;
+
+    public SimpleCreditRuleSet(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @Override
+    public Optional<RecommendationDTO> getRecommendation(String userId, JdbcTemplate jdbcTemplate) {
+
+        // Проверка отсутствия продуктов с типом CREDIT
+        String sqlCheckCredit = "SELECT 1 FROM transactions t "
+                + "JOIN products p ON t.product_id = p.id "
+                + "WHERE t.user_id = ? AND p.type = 'CREDIT' LIMIT 1";
+
+        List<Map<String, Object>> creditResults = this.jdbcTemplate.queryForList(sqlCheckCredit, userId);
+        if (!creditResults.isEmpty()) {
+            // Есть продукты CREDIT — рекомендация не подходит
+            return Optional.empty();
+        }
+
+        // Проверка суммы пополнений по DEBIT > трат
+        // Сумма депозита
+        String sqlSumDeposit = "SELECT SUM(t.amount) FROM transactions t "
+                + "JOIN products p ON t.product_id = p.id "
+                + "WHERE t.user_id = ? AND p.type = 'DEBIT' AND t.type = 'DEPOSIT'";
+
+         // Сумма трат
+        String sqlSumSpend = "SELECT SUM(t.amount) FROM transactions t "
+                + "JOIN products p ON t.product_id = p.id "
+                + "WHERE t.user_id = ? AND p.type = 'DEBIT' AND t.type = 'SPEND'";
+
+        Double sumDeposit = this.jdbcTemplate.queryForObject(sqlSumDeposit, Double.class, userId);
+        Double sumSpend = this.jdbcTemplate.queryForObject(sqlSumSpend, Double.class, userId);
+
+        sumDeposit = (sumDeposit != null) ? sumDeposit : 0.0;
+        sumSpend = (sumSpend != null) ? sumSpend : 0.0;
+
+        // Проверка суммы расходов > 100000 ₽
+        String sqlSumExpenses = "SELECT SUM(t.amount) FROM transactions t "
+                + "JOIN products p ON t.product_id = p.id "
+                + "WHERE t.user_id = ? AND p.type = 'DEBIT' AND t.type = 'SPEND'";
+
+        Double totalExpenses = this.jdbcTemplate.queryForObject(sqlSumExpenses, Double.class, userId);
+        totalExpenses = (totalExpenses != null) ? totalExpenses : 0.0;
+
+        // Проверка условий
+        if (sumDeposit > sumSpend && totalExpenses > 100_000) {
+            return Optional.of(new RecommendationDTO(
+                    RECOMMENDATION_ID,
+                    "Simple Credit",
+                    "Откройте мир выгодных кредитов с нами!"
+            ));
+        }
+
+        return Optional.empty();
+    }
+}
