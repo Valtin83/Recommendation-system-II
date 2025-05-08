@@ -1,55 +1,65 @@
 package com.example.Recommendation_system.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.annotation.Id;
 
-import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 
-public class Recommendation  {
+@Entity
+public class Recommendation {
 
     @Id
-    private String userId;
-    private List<RecommendationDTO> recommendations;
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @Column(name = "id", updatable = false, nullable = false)
+    private UUID id;
+    private String name;
+    private String description;
 
-    public Recommendation(String userId, List<RecommendationDTO> recommendations) {
-        this.userId = userId;
-        this.recommendations = recommendations;
+    public Recommendation(UUID id, String name, String description) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
     }
 
-    public String getUserId() {
-        return userId;
+    public Recommendation() {
     }
 
-    public void setUserId(String userId) {
-        this.userId = userId;
+    public String getName() {
+        return name;
     }
 
-    public List<RecommendationDTO> getRecommendations() {
-        return recommendations;
+    public String getDescription() {
+        return description;
     }
 
-    public void setRecommendations(List<RecommendationDTO> recommendations) {
-        this.recommendations = recommendations;
+    public UUID getId() {
+        return id;
     }
 
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Recommendation that = (Recommendation) o;
-        return Objects.equals(userId, that.userId) && Objects.equals(recommendations, that.recommendations);
+        return Objects.equals(id, that.id) && Objects.equals(name, that.name) && Objects.equals(description, that.description);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(userId, recommendations);
+        return Objects.hash(id, name, description);
     }
 
     @Override
     public String toString() {
         return "Recommendation{" +
-                "userId='" + userId + '\'' +
-                ", recommendations=" + recommendations +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", description='" + description + '\'' +
                 '}';
     }
 }
