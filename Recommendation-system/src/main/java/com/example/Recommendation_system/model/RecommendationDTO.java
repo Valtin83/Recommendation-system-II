@@ -7,29 +7,29 @@ import java.util.Objects;
 public class RecommendationDTO {
 
     @Id
-    private String userId;
+    private String productId;
     private String recommendation;
     private String description;
 
     public RecommendationDTO(String userId, String recommendation, String description) {
-        this.userId = userId;
+        this.productId = userId;
         this.recommendation = recommendation;
         this.description = description;
     }
 
-    public String getUserId() {
-        return userId;
+    public String getProductId() {
+        return productId;
     }
 
     public void setUserId(String userId) {
-        this.userId = userId;
+        this.productId = userId;
     }
 
-    public String getRecommendationText() {
+    public String getRecommendation() {
         return recommendation;
     }
 
-    public void setRecommendationText(String recommendationText) {
+    public void setRecommendation(String recommendationText) {
         this.recommendation = recommendation;
     }
 
@@ -45,18 +45,18 @@ public class RecommendationDTO {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         RecommendationDTO that = (RecommendationDTO) o;
-        return Objects.equals(userId, that.userId) && Objects.equals(recommendation, that.recommendation) && Objects.equals(description, that.description);
+        return Objects.equals(productId, that.productId) && Objects.equals(recommendation, that.recommendation) && Objects.equals(description, that.description);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(userId, recommendation, description);
+        return Objects.hash(productId, recommendation, description);
     }
 
     @Override
     public String toString() {
         return "RecommendationDTO{" +
-                "userId='" + userId + '\'' +
+                "productId='" + productId + '\'' +
                 ", recommendation='" + recommendation + '\'' +
                 ", description='" + description + '\'' +
                 '}';

@@ -1,72 +1,77 @@
 package com.example.Recommendation_system.service;
 
-import com.example.Recommendation_system.model.RecommendationDTO;
+import com.example.Recommendation_system.model.Recommendation;
+import com.github.benmanes.caffeine.cache.Cache;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
 public class SimpleCreditRuleSet implements RecommendationRuleSet {
 
-    private static final String RECOMMENDATION_ID = "ab138afb-f3ba-4a93-b74f-0fcee86d447f";
-
     private final JdbcTemplate jdbcTemplate;
+    private final Cache<String, Boolean> cache;
+    private final String DESCRIPTION = "Откройте мир выгодных кредитов с нами! Ищете способ быстро и без лишних хлопот получить нужную сумму? Тогда наш выгодный кредит — именно то, что вам нужно";
+    private final String NO_RECOMMENDATION = "Нет рекомендации";
 
-    public SimpleCreditRuleSet(JdbcTemplate jdbcTemplate) {
+    public SimpleCreditRuleSet(JdbcTemplate jdbcTemplate, Cache<String, Boolean> cache) {
         this.jdbcTemplate = jdbcTemplate;
+        this.cache = cache;
     }
 
+
     @Override
-    public Optional<RecommendationDTO> getRecommendation(String userId, JdbcTemplate jdbcTemplate) {
+    public Optional<Object> getRecommendation(UUID userId) {
+        // Генерируем уникальные ключи для кэша
+        String cacheKeyNoCredit = userId + "_NO_CREDIT_PRODUCTS";
+        String cacheKeyIncomeGreater = userId + "_INCOME_GREATER_THAN_SPENDING";
+        String cacheKeySpendingGreater = userId + "_SPENDING_GREATER_THAN_100K";
 
-        // Проверка отсутствия продуктов с типом CREDIT
-        String sqlCheckCredit = "SELECT 1 FROM transactions t "
-                + "JOIN products p ON t.product_id = p.id "
-                + "WHERE t.user_id = ? AND p.type = 'CREDIT' LIMIT 1";
-
-        List<Map<String, Object>> creditResults = this.jdbcTemplate.queryForList(sqlCheckCredit, userId);
-        if (!creditResults.isEmpty()) {
-            // Есть продукты CREDIT — рекомендация не подходит
-            return Optional.empty();
-        }
-
-        // Проверка суммы пополнений по DEBIT > трат
-        // Сумма депозита
-        String sqlSumDeposit = "SELECT SUM(t.amount) FROM transactions t "
-                + "JOIN products p ON t.product_id = p.id "
-                + "WHERE t.user_id = ? AND p.type = 'DEBIT' AND t.type = 'DEPOSIT'";
-
-         // Сумма трат
-        String sqlSumSpend = "SELECT SUM(t.amount) FROM transactions t "
-                + "JOIN products p ON t.product_id = p.id "
-                + "WHERE t.user_id = ? AND p.type = 'DEBIT' AND t.type = 'SPEND'";
-
-        Double sumDeposit = this.jdbcTemplate.queryForObject(sqlSumDeposit, Double.class, userId);
-        Double sumSpend = this.jdbcTemplate.queryForObject(sqlSumSpend, Double.class, userId);
-
-        sumDeposit = (sumDeposit != null) ? sumDeposit : 0.0;
-        sumSpend = (sumSpend != null) ? sumSpend : 0.0;
-
-        // Проверка суммы расходов > 100000 ₽
-        String sqlSumExpenses = "SELECT SUM(t.amount) FROM transactions t "
-                + "JOIN products p ON t.product_id = p.id "
-                + "WHERE t.user_id = ? AND p.type = 'DEBIT' AND t.type = 'SPEND'";
-
-        Double totalExpenses = this.jdbcTemplate.queryForObject(sqlSumExpenses, Double.class, userId);
-        totalExpenses = (totalExpenses != null) ? totalExpenses : 0.0;
-
-        // Проверка условий
-        if (sumDeposit > sumSpend && totalExpenses > 100_000) {
-            return Optional.of(new RecommendationDTO(
-                    RECOMMENDATION_ID,
-                    "Simple Credit",
-                    "Откройте мир выгодных кредитов с нами!"
+        // Проверяем кэш или выполняем запросы
+        Boolean noCreditProducts = cache.getIfPresent(cacheKeyNoCredit);
+        if (noCreditProducts == null) {
+            noCreditProducts = Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) = 0 FROM PRODUCTS p " +
+                            "JOIN TRANSACTIONS t ON p.ID = t.PRODUCT_ID " +
+                            "WHERE p.TYPE = 'CREDIT' AND t.USER_ID = ?",
+                    Boolean.class,
+                    userId
             ));
+            cache.put(cacheKeyNoCredit, noCreditProducts);
         }
 
-        return Optional.empty();
+        Boolean debitIncomeGreaterThanSpending = cache.getIfPresent(cacheKeyIncomeGreater);
+        if (debitIncomeGreaterThanSpending == null) {
+            debitIncomeGreaterThanSpending = Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+                    "SELECT SUM(CASE WHEN t.AMOUNT > 0 THEN t.AMOUNT ELSE 0 END) > " +
+                            "SUM(CASE WHEN t.AMOUNT < 0 THEN ABS(t.AMOUNT) ELSE 0 END) " +
+                            "FROM PRODUCTS p JOIN TRANSACTIONS t ON p.ID = t.PRODUCT_ID " +
+                            "WHERE p.TYPE = 'DEBIT' AND t.USER_ID = ?",
+                    Boolean.class,
+                    userId
+            ));
+            cache.put(cacheKeyIncomeGreater, debitIncomeGreaterThanSpending);
+        }
+
+        Boolean debitSpendingGreaterThan100_000 = cache.getIfPresent(cacheKeySpendingGreater);
+        if (debitSpendingGreaterThan100_000 == null) {
+            debitSpendingGreaterThan100_000 = Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+                    "SELECT SUM(CASE WHEN t.AMOUNT < 0 THEN ABS(t.AMOUNT) ELSE 0 END) > 100000 " +
+                            "FROM PRODUCTS p JOIN TRANSACTIONS t ON p.ID = t.PRODUCT_ID " +
+                            "WHERE p.TYPE = 'DEBIT' AND t.USER_ID = ?",
+                    Boolean.class,
+                    userId
+            ));
+            cache.put(cacheKeySpendingGreater, debitSpendingGreaterThan100_000);
+        }
+
+        if (noCreditProducts || debitIncomeGreaterThanSpending || debitSpendingGreaterThan100_000) {
+            return Optional.of(List.of(new Recommendation(userId,"Простой кредит", DESCRIPTION)));
+        } else {
+            return Optional.of(List.of(new Recommendation(userId, "Простой кредит", NO_RECOMMENDATION)));
+        }
     }
 }
