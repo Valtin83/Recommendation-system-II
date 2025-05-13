@@ -2,7 +2,6 @@ package com.example.Recommendation_system.model;
 
 
 import jakarta.persistence.*;
-import org.springframework.data.annotation.Id;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -11,7 +10,8 @@ import java.util.UUID;
 @Table(name = "recommendation_rule")
 public class Rules {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
     private String product_name;
     private UUID product_id;

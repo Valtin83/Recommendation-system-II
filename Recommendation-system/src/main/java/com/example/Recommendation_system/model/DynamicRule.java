@@ -1,8 +1,6 @@
 package com.example.Recommendation_system.model;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.GenericGenerator;
-import org.springframework.data.annotation.Id;
 
 import java.util.List;
 import java.util.UUID;
@@ -11,13 +9,9 @@ import java.util.UUID;
 @Table(name = "dynamic_rules")
 public class DynamicRule {
     @Id
-    @GeneratedValue(generator = "UUID")
-    @org.hibernate.annotations.GenericGenerator(
-            name = "UUID",
-            strategy = "org.hibernate.id.UUIDGenerator"
-    )
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id", updatable = false, nullable = false)
-     private UUID id;
+    private UUID id;
 
     private String productName;
     private UUID productId;
