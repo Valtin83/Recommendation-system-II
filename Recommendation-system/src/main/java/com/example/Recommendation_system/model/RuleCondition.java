@@ -2,7 +2,7 @@ package com.example.Recommendation_system.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import org.springframework.data.annotation.Id;
+
 
 import java.util.Objects;
 
@@ -11,7 +11,8 @@ import java.util.Objects;
 public class RuleCondition {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "id", updatable = false, nullable = false)
     private Long id;
 
     private String query;
