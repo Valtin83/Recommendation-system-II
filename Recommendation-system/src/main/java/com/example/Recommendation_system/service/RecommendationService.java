@@ -16,9 +16,11 @@ public class RecommendationService {
         this.ruleSets = ruleSets;
     }
 
-    public List<Object> getListRecommendation(UUID userId) {
+    public List<Object> getListRecommendation(String userId) {
         return ruleSets.stream()
-                .flatMap(ruleSet -> ruleSet.getRecommendation(userId).stream())
+                .flatMap(ruleSet -> ruleSet.getRecommendation(UUID.fromString(userId)).stream())
                 .collect(Collectors.toList());
     }
+
+
 }

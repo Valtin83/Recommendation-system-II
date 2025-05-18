@@ -1,5 +1,6 @@
 package com.example.Recommendation_system.model;
 
+import com.example.Recommendation_system.repository.RuleStatisticRepository;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -21,4 +22,7 @@ public class RuleStatistic {        //Сбор статистики которы
     @Column(name = "count", nullable = false)
     private int count = 0;
 
+    public Class<RuleStatisticRepository> RuleStatistic(String key, Integer value) {
+        return RuleStatisticRepository.class;
+    }
 }

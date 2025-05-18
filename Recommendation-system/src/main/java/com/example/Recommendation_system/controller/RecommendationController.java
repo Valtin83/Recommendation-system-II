@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,14 +17,13 @@ public class RecommendationController {
 
     private final RecommendationService recommendationService;
 
-    // Внедрение сервиса через конструктор
     public RecommendationController(RecommendationService recommendationService) {
         this.recommendationService = recommendationService;
     }
 
     @GetMapping("/{userId}")
     public ResponseEntity<List<Object>> getRecommendations(@PathVariable UUID userId) {
-        List<Object> recommendations = recommendationService.getListRecommendation(userId);
+        List<Object> recommendations = Collections.singletonList(recommendationService.getListRecommendation(String.valueOf(userId)));
         return ResponseEntity.ok(recommendations);
     }
 
