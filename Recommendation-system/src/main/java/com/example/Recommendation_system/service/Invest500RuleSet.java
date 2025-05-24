@@ -13,9 +13,9 @@ import java.util.UUID;
 public class Invest500RuleSet implements RecommendationRuleSet {
 
     private final JdbcTemplate jdbcTemplate;
-    private final String DESCRIPTION = "Откройте свой путь к успеху с индивидуальным инвестиционным счетом (ИИС) от нашего банка! Воспользуйтесь налоговыми льготами и начните инвестировать с умом";
+    final String DESCRIPTION = "Откройте свой путь к успеху с индивидуальным инвестиционным счетом (ИИС) от нашего банка! Воспользуйтесь налоговыми льготами и начните инвестировать с умом";
     private final Cache<String, Boolean> cache;
-    private final String NO_RECOMMENDATION = "No recommendation";
+    final String NO_RECOMMENDATION = "No recommendation";
 
     public Invest500RuleSet(JdbcTemplate jdbcTemplate, Cache<String, Boolean> cache) {
         this.jdbcTemplate = jdbcTemplate;

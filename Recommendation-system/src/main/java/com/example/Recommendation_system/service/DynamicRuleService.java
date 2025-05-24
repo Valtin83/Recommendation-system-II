@@ -20,19 +20,21 @@ public class DynamicRuleService {
     }
 
     public DynamicRule createRule(DynamicRule rule) {
-        // связь RuleCondition и DynamicRule
-        if (rule.getConditions() != null) {
+        if (rule == null) {
+            throw new IllegalArgumentException("Значение правила не может быть равным нулю");
+        }
+        if (rule.getConditions() != null && !rule.getConditions().isEmpty()) {
             rule.getConditions().forEach(condition -> condition.setDynamicRule(rule));
         }
         DynamicRule savedRule = repository.save(rule);
 
-        // Создаем запись статистики для нового правила
         RuleStatistic statistic = new RuleStatistic();
         statistic.setRuleId(savedRule.getId());
         statisticRepository.save(statistic);
 
         return savedRule;
     }
+
 
     public List<DynamicRule> getAllRules() {
         return repository.findAll();

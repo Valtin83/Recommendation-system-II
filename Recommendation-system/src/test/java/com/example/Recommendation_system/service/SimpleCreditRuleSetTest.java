@@ -1,97 +1,111 @@
 package com.example.Recommendation_system.service;
 
-import com.example.Recommendation_system.model.RecommendationDTO;
+import com.example.Recommendation_system.model.Recommendation;
+import com.github.benmanes.caffeine.cache.Cache;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.ArgumentMatchers;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-public class SimpleCreditRuleSetTest {
+class SimpleCreditRuleSetTest {
 
-    @Mock
     private JdbcTemplate jdbcTemplate;
-
-    @InjectMocks
-    private SimpleCreditRuleSet simpleCreditRuleSet;
-
-    private static final String USER_ID = "test-user";
+    private Cache<String, Boolean> cache;
+    private SimpleCreditRuleSet ruleSet;
+    private UUID userId;
 
     @BeforeEach
-    public void setUp() {
-        MockitoAnnotations.openMocks(this);
+    void setUp() {
+        jdbcTemplate = mock(JdbcTemplate.class);
+        cache = mock(Cache.class);
+        ruleSet = new SimpleCreditRuleSet(jdbcTemplate, cache);
+        userId = UUID.randomUUID();
     }
 
     @Test
-    public void testGetRecommendationWithCreditProduct() {
-        // Настройка мока, чтобы имелся хотя бы один кредитный продукт
-        when(jdbcTemplate.queryForList(anyString(), eq(USER_ID)))
-                .thenReturn(Collections.singletonList(Collections.singletonMap("1", 1)));
+    void testNoCreditProducts() {
+        // Кэш возвращает null, имитируем запрос
+        when(cache.getIfPresent(ArgumentMatchers.contains(userId + "_NO_CREDIT_PRODUCTS"))).thenReturn(null);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq(userId)))
+                .thenReturn(true); // Нет кредитных продуктов
 
-        // Проверяем, что рекомендация отсутствует
-        Optional<RecommendationDTO> recommendation = simpleCreditRuleSet.getRecommendation(USER_ID, jdbcTemplate);
-        assertTrue(recommendation.isEmpty());
+        // Кэш возвращает true для noCreditProducts
+        when(cache.getIfPresent(ArgumentMatchers.contains(userId + "_NO_CREDIT_PRODUCTS"))).thenReturn(true);
+
+        Optional<Object> result = ruleSet.getRecommendation(userId);
+
+        assertTrue(result.isPresent());
+        List<Recommendation> recs = (List<Recommendation>) result.get();
+        assertEquals(1, recs.size());
+        assertEquals("Простой кредит", recs.get(0));
+        assertEquals("Откройте мир выгодных кредитов с нами! Ищете способ быстро и без лишних хлопот получить нужную сумму? Тогда наш выгодный кредит — именно то, что вам нужно", recs.get(0).getDescription());
     }
 
     @Test
-    public void testGetRecommendationWithoutCreditProduct() {
-        // Настройка мока, чтобы не было кредитных продуктов
-        when(jdbcTemplate.queryForList(anyString(), eq(USER_ID)))
-                .thenReturn(Collections.emptyList());
+    void testIncomeGreaterThanSpending() {
+        // Кэш возвращает null, имитируем запрос
+        when(cache.getIfPresent(ArgumentMatchers.contains(userId + "_NO_CREDIT_PRODUCTS"))).thenReturn(false);
+        when(cache.getIfPresent(ArgumentMatchers.contains(userId + "_INCOME_GREATER_THAN_SPENDING"))).thenReturn(null);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq(userId)))
+                .thenReturn(true); // Доход больше расходов
 
-        // Настройка тестовых данных для депозитов и трат
-        when(jdbcTemplate.queryForObject(anyString(), eq(Double.class), eq(USER_ID)))
-                .thenReturn(150000.0) // сумма депозитов
-                .thenReturn(40000.0) // сумма трат
-                .thenReturn(120000.0); // сумма расходов
+        // Кэш возвращает true для incomeGreater
+        when(cache.getIfPresent(ArgumentMatchers.contains(userId + "_INCOME_GREATER_THAN_SPENDING"))).thenReturn(true);
 
-        // Проверяем наличие рекомендации
-        Optional<RecommendationDTO> recommendation = simpleCreditRuleSet.getRecommendation(USER_ID, jdbcTemplate);
-        assertTrue(recommendation.isPresent());
-        assertEquals("ab138afb-f3ba-4a93-b74f-0fcee86d447f", recommendation.get().getProductId());
-        assertEquals("Simple Credit", recommendation.get().getRecommendation());
-        assertEquals("Откройте мир выгодных кредитов с нами!", recommendation.get().getDescription());
+        Optional<Object> result = ruleSet.getRecommendation(userId);
+
+        assertTrue(result.isPresent());
+        List<Recommendation> recs = (List<Recommendation>) result.get();
+        assertEquals(1, recs.size());
+        assertEquals("Простой кредит", recs.get(0));
     }
 
     @Test
-    public void testGetRecommendationWithoutCreditProductInsufficientExpenses() {
-        // Настройка мока, чтобы не было кредитных продуктов
-        when(jdbcTemplate.queryForList(anyString(), eq(USER_ID)))
-                .thenReturn(Collections.emptyList());
+    void testSpendingGreaterThan100K() {
+        // Кэш возвращает null, имитируем запрос
+        when(cache.getIfPresent(ArgumentMatchers.contains(userId + "_NO_CREDIT_PRODUCTS"))).thenReturn(false);
+        when(cache.getIfPresent(ArgumentMatchers.contains(userId + "_INCOME_GREATER_THAN_SPENDING"))).thenReturn(false);
+        when(cache.getIfPresent(ArgumentMatchers.contains(userId + "_SPENDING_GREATER_THAN_100K"))).thenReturn(null);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq(userId)))
+                .thenReturn(true); // Расходы > 100000
 
-        // Настройка тестовых данных для депозитов и трат
-        when(jdbcTemplate.queryForObject(anyString(), eq(Double.class), eq(USER_ID)))
-                .thenReturn(150000.0) // сумма депозитов
-                .thenReturn(40000.0) // сумма трат
-                .thenReturn(90000.0); // сумма расходов
+        // Кэш возвращает true для spendingGreater
+        when(cache.getIfPresent(ArgumentMatchers.contains(userId + "_SPENDING_GREATER_THAN_100K"))).thenReturn(true);
 
-        // Проверяем отсутствие рекомендации
-        Optional<RecommendationDTO> recommendation = simpleCreditRuleSet.getRecommendation(USER_ID, jdbcTemplate);
-        assertTrue(recommendation.isEmpty());
+        Optional<Object> result = ruleSet.getRecommendation(userId);
+
+        assertTrue(result.isPresent());
+        List<Recommendation> recs = (List<Recommendation>) result.get();
+        assertEquals(1, recs.size());
     }
 
     @Test
-    public void testGetRecommendationWithoutCreditProductTooLowSavings() {
-        // Настройка мока, чтобы не было кредитных продуктов
-        when(jdbcTemplate.queryForList(anyString(), eq(USER_ID)))
-                .thenReturn(Collections.emptyList());
+    void testNoConditionsMet() {
+        // Все кэши возвращают null, имитируем запросы, возвращающие false
+        when(cache.getIfPresent(anyString())).thenReturn(null);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq(userId)))
+                .thenReturn(false);
 
-        // Настройка тестовых данных для депозитов и трат
-        when(jdbcTemplate.queryForObject(anyString(), eq(Double.class), eq(USER_ID)))
-                .thenReturn(50000.0) // сумма депозитов
-                .thenReturn(50000.0) // сумма трат
-                .thenReturn(200000.0); // сумма расходов
+        // Кэш возвращает false для всех условий
+        when(cache.getIfPresent(anyString())).thenReturn(false);
 
-        // Проверяем отсутствие рекомендации
-        Optional<RecommendationDTO> recommendation = simpleCreditRuleSet.getRecommendation(USER_ID, jdbcTemplate);
-        assertTrue(recommendation.isEmpty());
+        Optional<Object> result = ruleSet.getRecommendation(userId);
+
+        assertTrue(result.isPresent());
+        List<Recommendation> recs = (List<Recommendation>) result.get();
+        assertEquals(1, recs.size());
+        assertEquals("Простой кредит", recs.get(0));
+        assertEquals("Нет рекомендации", recs.get(0).getDescription());
     }
 }

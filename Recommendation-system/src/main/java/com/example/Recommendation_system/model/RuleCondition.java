@@ -13,7 +13,7 @@ public class RuleCondition {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id", updatable = false, nullable = false)
-    private Long id;
+    private String id;
 
     private String query;
     private String arguments; // json строка
@@ -24,11 +24,11 @@ public class RuleCondition {
     @JsonBackReference
     private DynamicRule dynamicRule;
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -75,6 +75,5 @@ public class RuleCondition {
     public int hashCode() {
         return Objects.hash(id, query, arguments, negate, dynamicRule);
     }
-
 
 }

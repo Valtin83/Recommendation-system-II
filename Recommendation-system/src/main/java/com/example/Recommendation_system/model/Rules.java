@@ -13,24 +13,22 @@ public class Rules {
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
-    private String product_name;
-    private UUID product_id;
-    private String product_text;
+    private String ProductName;
+    private UUID ProductId;
+    private String ProductText;
     private String rule;
 
-    @Version
-    private int version;
-
-    public Rules(UUID id, String product_name, UUID product_id, String product_text, String rule) {
+    public Rules(UUID id, String productName, UUID productId, String productText, String rule) {
         this.id = id;
-        this.product_name = product_name;
-        this.product_id = product_id;
-        this.product_text = product_text;
+        ProductName = productName;
+        ProductId = productId;
+        ProductText = productText;
         this.rule = rule;
     }
 
-    public Rules() {
+    public Rules(UUID productId) {
 
+        ProductId = productId;
     }
 
     public UUID getId() {
@@ -41,28 +39,28 @@ public class Rules {
         this.id = id;
     }
 
-    public String getProduct_name() {
-        return product_name;
+    public String getProductName() {
+        return ProductName;
     }
 
-    public void setProduct_name(String product_name) {
-        this.product_name = product_name;
+    public void setProductName(String productName) {
+        ProductName = productName;
     }
 
-    public UUID getProduct_id() {
-        return product_id;
+    public UUID getProductId() {
+        return ProductId;
     }
 
-    public void setProduct_id(UUID product_id) {
-        this.product_id = product_id;
+    public void setProductId(UUID productId) {
+        ProductId = productId;
     }
 
-    public String getProduct_text() {
-        return product_text;
+    public String getProductText() {
+        return ProductText;
     }
 
-    public void setProduct_text(String product_text) {
-        this.product_text = product_text;
+    public void setProductText(String productText) {
+        ProductText = productText;
     }
 
     public String getRule() {
@@ -73,35 +71,26 @@ public class Rules {
         this.rule = rule;
     }
 
-    public int getVersion() {
-        return version;
-    }
-
-    public void setVersion(int version) {
-        this.version = version;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Rules rules = (Rules) o;
-        return version == rules.version && Objects.equals(id, rules.id) && Objects.equals(product_name, rules.product_name) && Objects.equals(product_id, rules.product_id) && Objects.equals(product_text, rules.product_text) && Objects.equals(rule, rules.rule);
+        return Objects.equals(id, rules.id) && Objects.equals(ProductName, rules.ProductName) && Objects.equals(ProductId, rules.ProductId) && Objects.equals(ProductText, rules.ProductText) && Objects.equals(rule, rules.rule);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, product_name, product_id, product_text, rule, version);
+        return Objects.hash(id, ProductName, ProductId, ProductText, rule);
     }
 
     @Override
     public String toString() {
         return "Rules{" +
                 "id=" + id +
-                ", product_name='" + product_name + '\'' +
-                ", product_id=" + product_id +
-                ", product_text='" + product_text + '\'' +
+                ", ProductName='" + ProductName + '\'' +
+                ", ProductId=" + ProductId +
+                ", ProductText='" + ProductText + '\'' +
                 ", rule='" + rule + '\'' +
-                ", version=" + version +
                 '}';
     }
 }

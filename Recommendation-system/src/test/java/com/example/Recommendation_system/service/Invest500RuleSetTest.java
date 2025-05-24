@@ -1,92 +1,115 @@
 package com.example.Recommendation_system.service;
 
-import com.example.Recommendation_system.model.RecommendationDTO;
+import com.example.Recommendation_system.model.Recommendation;
+import com.github.benmanes.caffeine.cache.Cache;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static javax.management.Query.eq;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
+import static org.skyscreamer.jsonassert.JSONAssert.assertEquals;
 
 public class Invest500RuleSetTest {
 
-    private static final String USER_ID = "user123";
+    @Mock
+    private JdbcTemplate jdbcTemplate;
 
-    @Test
-    public void testGetRecommendation_WhenAllConditionsMet_ReturnsRecommendation() {
-        // Мокаем JdbcTemplate
-        JdbcTemplate jdbcMock = mock(JdbcTemplate.class);
-        Invest500RuleSet rule = new Invest500RuleSet(jdbcMock);
+    @Mock
+    private Cache<String, Boolean> cache;
 
-        // Мокаем результат для наличия транзакций DEBIT
-        when(jdbcMock.queryForList(anyString(), eq(USER_ID)))
-                .thenReturn(List.of(Map.of("dummy", "value"))); // хоть что-то для дебит
+    @InjectMocks
+    private Invest500RuleSet invest500RuleSet;
 
-        // Мокаем наличие INVEST-продуктов - возвращаем результат, чтобы условие не возвращало пусто
-        when(jdbcMock.queryForList(anyString(), eq(USER_ID)))
-                .thenReturn(List.of()); // для DEBIT
-        doReturn(List.of()).when(jdbcMock).queryForList(anyString(), eq(USER_ID)); // для INVEST
+    private UUID userId;
 
-        // Мокаем сумму SAVING deposits
-        when(jdbcMock.queryForObject(anyString(), eq(Double.class), eq(USER_ID)))
-                .thenReturn(1500.0);
-
-        // Выполняем
-        Optional<RecommendationDTO> recOpt = rule.getRecommendation(USER_ID, jdbcMock);
-
-        assertEquals(true, recOpt.isPresent());
-        assertEquals("Invest 500", recOpt.get().getRecommendation());
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
+        userId = UUID.randomUUID();
     }
 
     @Test
-    public void testGetRecommendation_WhenNoDebitTransactions_ReturnsEmpty() {
-        JdbcTemplate jdbcMock = mock(JdbcTemplate.class);
-        Invest500RuleSet rule = new Invest500RuleSet(jdbcMock);
+    public void testGetRecommendationDebitUsageTrue() {
+        // Настраиваем кэш
+        when(cache.getIfPresent(userId + "_INVEST_DEBIT_COUNT")).thenReturn(null);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq(userId))).thenReturn(true);
 
-        when(jdbcMock.queryForList(anyString(), eq(USER_ID)))
-                .thenReturn(List.of()); // Нет транзакций DEBIT
+        // Устанавливаем поведение для других запросов
+        when(cache.getIfPresent(userId + "_INVEST_PRODUCT_COUNT")).thenReturn(false);
+        when(cache.getIfPresent(userId + "_SAVING_SUM_OVER_1000")).thenReturn(false);
 
-        Optional<RecommendationDTO> recOpt = rule.getRecommendation(USER_ID, jdbcMock);
-        assertTrue(recOpt.isEmpty());
+        // Получаем рекомендацию
+        Optional<Object> recommendation = invest500RuleSet.getRecommendation(userId);
+
+        // Проверяем результат
+        assertTrue(recommendation.isPresent());
+        assertEquals(1, ((List<Recommendation>) recommendation.get()).size());
+        assertEquals("Invest 500", ((List<Recommendation>) recommendation.get()).get(0));
+        assertEquals(invest500RuleSet.DESCRIPTION, ((List<Recommendation>) recommendation.get()).get(0).getDescription());
     }
 
     @Test
-    public void testGetRecommendation_WhenInvestExists_ReturnsEmpty() {
-        JdbcTemplate jdbcMock = mock(JdbcTemplate.class);
-        Invest500RuleSet rule = new Invest500RuleSet(jdbcMock);
+    public void testGetRecommendationNoInvestProductsTrue() {
+        // Настраиваем кэш
+        when(cache.getIfPresent(userId + "_INVEST_DEBIT_COUNT")).thenReturn(false);
+        when(cache.getIfPresent(userId + "_INVEST_PRODUCT_COUNT")).thenReturn(null);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq(userId))).thenReturn(true);
 
-        // Для DEBIT - есть
-        when(jdbcMock.queryForList(anyString(), eq(USER_ID)))
-                .thenReturn(List.of(Map.of("dummy", "value")));
-        // Для INVEST - есть
-        when(jdbcMock.queryForList(contains("INVEST"), eq(USER_ID)))
-                .thenReturn(List.of(Map.of("dummy", "value")));
+        // Устанавливаем поведение для других запросов
+        when(cache.getIfPresent(userId + "_SAVING_SUM_OVER_1000")).thenReturn(false);
 
-        Optional<RecommendationDTO> recOpt = rule.getRecommendation(USER_ID, jdbcMock);
-        assertTrue(recOpt.isEmpty());
+        // Получаем рекомендацию
+        Optional<Object> recommendation = invest500RuleSet.getRecommendation(userId);
+
+        // Проверяем результат
+        assertTrue(recommendation.isPresent());
+        assertEquals(1, ((List<Recommendation>) recommendation.get()).size());
+        assertEquals("Invest 500", ((List<Recommendation>) recommendation.get()).get(0).getTitle());
+        assertEquals(invest500RuleSet.DESCRIPTION, ((List<Recommendation>) recommendation.get()).get(0).getDescription());
     }
 
     @Test
-    public void testGetRecommendation_WhenSavingsBelowThreshold_ReturnsEmpty() {
-        JdbcTemplate jdbcMock = mock(JdbcTemplate.class);
-        Invest500RuleSet rule = new Invest500RuleSet(jdbcMock);
+    public void testGetRecommendationSavingOver1000True() {
+        // Настраиваем кэш
+        when(cache.getIfPresent(userId + "_INVEST_DEBIT_COUNT")).thenReturn(false);
+        when(cache.getIfPresent(userId + "_INVEST_PRODUCT_COUNT")).thenReturn(false);
+        when(cache.getIfPresent(userId + "_SAVING_SUM_OVER_1000")).thenReturn(null);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq(userId))).thenReturn(true);
 
-        // Для DEBIT - есть транзакции
-        when(jdbcMock.queryForList(anyString(), eq(USER_ID)))
-                .thenReturn(List.of(Map.of("dummy", "value")));
-        // Для INVEST - нет
-        when(jdbcMock.queryForList(contains("INVEST"), eq(USER_ID)))
-                .thenReturn(List.of());
-        // Для суммы savings - ниже 1000
-        when(jdbcMock.queryForObject(anyString(), eq(Double.class), eq(USER_ID)))
-                .thenReturn(900.0);
+        // Получаем рекомендацию
+        Optional<Object> recommendation = invest500RuleSet.getRecommendation(userId);
 
-        Optional<RecommendationDTO> recOpt = rule.getRecommendation(USER_ID, jdbcMock);
-        assertTrue(recOpt.isEmpty());
+        // Проверяем результат
+        assertTrue(recommendation.isPresent());
+        assertEquals(1, ((List<Recommendation>) recommendation.get()).size());
+        assertEquals("Invest 500", ((List<Recommendation>) recommendation.get()).get(0));
+        assertEquals(invest500RuleSet.DESCRIPTION, ((List<Recommendation>) recommendation.get()).get(0).getDescription());
+    }
+
+    @Test
+    public void testGetRecommendationNoRecommendation() {
+        // Настраиваем кэш
+        when(cache.getIfPresent(userId + "_INVEST_DEBIT_COUNT")).thenReturn(false);
+        when(cache.getIfPresent(userId + "_INVEST_PRODUCT_COUNT")).thenReturn(false);
+        when(cache.getIfPresent(userId + "_SAVING_SUM_OVER_1000")).thenReturn(false);
+
+        // Получаем рекомендацию
+        Optional<Object> recommendation = invest500RuleSet.getRecommendation(userId);
+
+        // Проверяем результат
+        assertTrue(recommendation.isPresent());
+        assertEquals(1, ((List<Recommendation>) recommendation.get()).size());
+        assertEquals("Invest 500", ((List<Recommendation>) recommendation.get()).get(0).getTitle());
+        assertEquals(invest500RuleSet.NO_RECOMMENDATION, ((List<Recommendation>) recommendation.get()).get(0).getDescription());
     }
 }
